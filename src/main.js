@@ -18,7 +18,7 @@ import ElementUI from 'element-ui'
 import '@/assets/font/iconfont.css'
 
 // 注册axios
-// axios.defaults.baseURL = 'http://www.allsps.com:82'
+// axios.defaults.baseURL = 'http://www.allsps.com'
 axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded;'
 // axios.defaults.timeout = 5000
 Vue.prototype.$axios = axios
@@ -30,7 +30,8 @@ Vue.prototype.$qs = qs
 Vue.use(ElementUI)
 
 // Vue.prototype.baseUrl = () => '/api'
-Vue.prototype.baseUrl = () => 'http://szydak.eicp.net:82'
+// Vue.prototype.baseUrl = () => 'http://szydak.eicp.net:82'
+Vue.prototype.baseUrl = () => 'http://www.allsps.com'
 
 Vue.config.productionTip = false
 

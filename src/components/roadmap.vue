@@ -18,9 +18,9 @@ export default {
   name: 'roadmap',
   data () {
     return {
-      companyId: 2,
+      companyId: 20,
       userId: 333,
-      nowProid: 1,
+      nowProid: 53,
       posId: 32,
       ratio: 2,
       pointData: [],
