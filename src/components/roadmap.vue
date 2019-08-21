@@ -1,118 +1,85 @@
 <template>
   <div class="roadmap">
-    <div class="point" :title="item.name" v-for="item in nowPointData" :key="item.id" :style="{left: item.coordX -50 + 'px', top: item.coordY -20 + 'px'}">
-      <i class="iconfont icon-xunluorenyuan"></i>
-      <p class="txt">{{ item.name }}</p>
+    <div class="operate">
+      <el-button type="primary" @click="returnClick">返回</el-button>
+      <el-button type="primary" @click="setClick">设置</el-button>
+      <el-button type="primary" @click="quitClick">退出</el-button>
     </div>
-    <ul class="track-list">
-      <li class="item" v-for="item in nowPointData" :key="item.id">
-        <span>{{ item.name }}</span>
-        <span class="position">{{ item.posName }}</span>
+    <ul class="list">
+      <li class="item" v-for="item in nowListData" :key="item.id">
+        <span>{{ item.user_name }}</span>
+        <span class="position">{{ item.position_name }}</span>
       </li>
     </ul>
+    <div id="container"></div>
   </div>
 </template>
 
 <script>
+import BMap from 'BMap'
+import { mapState } from 'vuex'
+import icon from '../assets/images/head_icon.png'
 export default {
   name: 'roadmap',
   data () {
     return {
-      companyId: 20,
-      userId: 333,
-      nowProid: 53,
-      posId: 32,
-      ratio: 2,
-      pointData: [],
+      map: null,
+      mapLevel: 19,
+      icon: icon,
       listData: [],
-      nowData: [],
-      nowPointData: [],
+      nowListData: [],
       total: 0,
       nowPage: 1,
       limit: 10,
       trackTimer: null,
-      speed: 5000,
-      pointIds: []
+      speed: 5000
     }
   },
   mounted () {
-    const dom = this.getDomClientSize()
-    const domWidth = dom.width
-    this.ratio = domWidth / 960
-    // 获取全部热点
-    this.getPointData()
-    // 获取列表数据
-    this.getListData()
+    this.mapInit()
+  },
+  computed: {
+    ...mapState(
+      {
+        mapCoord: 'proCoord',
+        companyId: 'companyId',
+        userId: 'userId',
+        proId: 'proId'
+      }
+    )
   },
   methods: {
-    // 获取浏览器宽高
-    getDomClientSize () {
-      if (window.innerWidth != null) {
-        return {
-          width: window.innerWidth,
-          height: window.innerHeight
-        }
-      } else if (document.compatMode === 'CSS1Compat') {
-        return {
-          width: document.documentElement.clientWidth,
-          height: document.documentElement.clientHeight
-        }
-      }
-      return {
-        width: document.body.clientWidth,
-        height: document.body.clientHeight
-      }
-    },
-    // 获取热点
-    getPointData () {
-      let params = {
-        company_id: this.companyId,
-        user_id: this.userId,
-        project_id: this.nowProid,
-        location_id: this.posId
-      }
-      params = this.$qs.stringify(params)
-      this.$axios({
-        method: 'post',
-        url: this.baseUrl() + '/ezx_location/location/v1.0/selLocationByID',
-        data: params
-      }).then((res) => {
-        if (res.data.result === 'Sucess') {
-          const points = res.data.data1.position
-          let pointData = []
-          const ratio = this.ratio
-          points.forEach((item, index) => {
-            if (item.xaxis !== '') {
-              pointData.push({
-                id: item.position_id,
-                name: item.position_name,
-                coordX: parseInt(item.xaxis) * ratio,
-                coordY: parseInt(item.yaxis) * ratio
-              })
-            }
-          })
-          this.pointData = pointData
-        } else {
-          this.$message({
-            showClose: true,
-            message: '服务器连接失败！',
-            type: 'error'
-          })
-        }
-      }).catch(() => {
-        this.$message({
-          showClose: true,
-          message: '服务器连接失败！',
-          type: 'error'
-        })
+    mapInit () {
+      // 百度地图API功能
+      let map = new BMap.Map('container', {
+        enableMapClick: false
       })
+      // 创建Map实例，初始化地图,设置中心点坐标和地图级别
+      const coordStr = this.mapCoord
+      const coordArr = coordStr.split(',')
+      const coordLng = Number.parseFloat(coordArr[0])
+      const coordLat = Number.parseFloat(coordArr[1])
+      const mapLevel = this.mapLevel
+      map.centerAndZoom(new BMap.Point(coordLng, coordLat), mapLevel)
+      // 设置个性化地图样式
+      map.setMapStyleV2({
+        styleId: '98549d78ed26e9b24a12b19b97cc040a'
+      })
+      // 开启滚轮缩放地图
+      map.enableScrollWheelZoom()
+      // 禁用双击放大
+      map.disableDoubleClickZoom()
+      // 挂在map对象
+      this.map = map
+      // 获取列表数据
+      this.getListData()
     },
     // 获取列表数据
     getListData () {
       let params = {
         company_id: this.companyId,
         user_id: this.userId,
-        project_id: this.nowProid
+        project_id: this.proId
       }
       params = this.$qs.stringify(params)
       this.$axios({
@@ -121,10 +88,10 @@ export default {
         data: params
       }).then((res) => {
         if (res.data.result === 'Sucess') {
-          let listData = res.data.data1
+          let listData = res.data.data1 || []
           this.listData = listData
-          // 总条数
           this.total = listData.length
+          this.nowPage = 1
           // 轨迹处理
           this.trackDispose()
         } else {
@@ -154,12 +121,15 @@ export default {
       // 每页条数
       const limit = this.limit
       // 当前数据
-      this.nowData = listData.slice(0, limit)
+      this.nowListData = listData.slice(0, limit)
+      this.createPoint()
       this.trackTimer = setInterval(() => {
         if (this.nowPage * limit < total) {
           let start = this.nowPage * limit
-          this.nowData = this.listData.slice(start, start + limit)
+          this.nowListData = this.listData.slice(start, start + limit)
           this.nowPage++
+          // 生成标注
+          this.createPoint()
         } else {
           // 清空定时器
           clearInterval(this.trackTimer)
@@ -167,31 +137,67 @@ export default {
           this.getListData()
         }
       }, this.speed)
-    }
-  },
-  watch: {
-    nowData (val, oldVal) {
-      if (val) {
-        const nowData = this.nowData
-        const pointData = this.pointData
-        let nowPointData = []
-        nowData.forEach((item, index) => {
-          pointData.forEach(point => {
-            if (point.id === item.position_id) {
-              nowPointData.push(
-                {
-                  name: item.user_name,
-                  coordX: point.coordX,
-                  coordY: point.coordY,
-                  posName: point.name,
-                  id: index
-                }
-              )
-            }
-          })
-        })
-        this.nowPointData = nowPointData
+    },
+    // 生成标点
+    createPoint () {
+      // 获取地图对象
+      let map = this.map
+      // 清除地图上的所有标点
+      map.clearOverlays()
+      let nowListData = this.nowListData
+      nowListData.forEach(item => {
+        if (item.coordinate) {
+          const pointArr = item.coordinate.split(',')
+          const pointLng = Number.parseFloat(pointArr[0])
+          const pointLat = Number.parseFloat(pointArr[1])
+          let marker = this.addMarker(new BMap.Point(pointLng, pointLat))
+          this.addInfoWindow(marker, item)
+        }
+      })
+    },
+    // 添加标注
+    addMarker (point) {
+      // 获取地图对象
+      let map = this.map
+      let icon = this.icon
+      let myIcon = new BMap.Icon(icon, new BMap.Size(24, 24), {
+        anchor: new BMap.Size(12, 12)
+      })
+      let marker = new BMap.Marker(point, {icon: myIcon})
+      map.addOverlay(marker)
+      return marker
+    },
+    // 添加信息窗口
+    addInfoWindow (marker, poi) {
+      // 信息窗口
+      let opts = {
+        width: 0,
+        height: 0,
+        title: poi.user_name
       }
+      const message = '地址：' + poi.position_name
+      // 创建信息窗口对象
+      let infoWindow = new BMap.InfoWindow(message, opts)
+      // 打开信息窗口
+      marker.addEventListener('mouseover', () => {
+        marker.openInfoWindow(infoWindow)
+      })
+      // 关闭信息窗口
+      marker.addEventListener('mouseout', () => {
+        marker.closeInfoWindow(infoWindow)
+      })
+    },
+    // 设置
+    setClick () {
+      this.$router.push({ path: '/sethot' })
+    },
+    // 返回
+    returnClick () {
+      this.$router.go(-1)
+    },
+    // 退出
+    quitClick () {
+      this.$router.push({ path: '/login' })
     }
   },
   beforeDestroy () {
@@ -202,57 +208,50 @@ export default {
 </script>
 
 <style  lang="less" scoped>
-.roadmap{
-  width: 100%;
-  height: 100%;
-  background: url("../assets/map.jpg") no-repeat;
-  background-size: cover;
-  position: relative;
-  .point{
-    position: absolute;
-    width: 100px;
-    text-align: center;
-    cursor: pointer;
-    i{
-      color: red;
-      font-size: 24px;
-    }
-    .txt{
+  .roadmap{
+    width: 100%;
+    height: 100%;
+    position: relative;
+    #container{
       width: 100%;
-      text-align: center;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      overflow: hidden;
-      color: red;
-      font-size: 12px;
+      height: 100%;
     }
-  }
-  .track-list{
-    width: 240px;
-    height: 380px;
-    padding: 5px;
-    border-radius: 6px;
-    border: 1px solid #cfcfcf;
-    background: rgba(0, 0, 0, 0.3);
-    position: absolute;
-    left: 20px;
-    top: 50%;
-    transform: translateY(-50%);
-    .item{
-      display: flex;
-      height: 35px;
-      align-items: center;
-      span{
-        width: 50%;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        overflow: hidden;
-        color: #ffffff;
-      }
-      .position{
-        text-align: right;
+    .operate{
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      z-index: 10;
+      .el-button{
+        margin: 0 10px;
       }
     }
+    .list{
+      width: 240px;
+      height: 380px;
+      padding: 5px;
+      border-radius: 6px;
+      border: 1px solid #cfcfcf;
+      background: rgba(0, 0, 0, 0.3);
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      .item{
+        display: flex;
+        height: 35px;
+        align-items: center;
+        span{
+          width: 50%;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          color: #ffffff;
+        }
+        .position{
+          text-align: right;
+        }
+      }
+    }
   }
-}
 </style>
