@@ -43,8 +43,9 @@ Vue.use(ElementUI)
 Vue.prototype.$common = common
 
 // Vue.prototype.baseUrl = () => '/api'
-// Vue.prototype.baseUrl = () => 'http://szydak.eicp.net:82'
-Vue.prototype.baseUrl = () => 'http://www.allsps.com'
+Vue.prototype.baseUrl = () => 'http://szydak.eicp.net:82'
+// Vue.prototype.baseUrl = () => 'http://192.168.1.199:8080'
+// Vue.prototype.baseUrl = () => 'http://www.allsps.com'
 
 Vue.config.productionTip = false
 

@@ -52,7 +52,9 @@ export default {
     mapInit () {
       // 百度地图API功能
       let map = new BMap.Map('container', {
-        enableMapClick: false
+        enableMapClick: false,
+        minZoom: 6,
+        maxZoom: 19
       })
       // 创建Map实例，初始化地图,设置中心点坐标和地图级别
       const coordStr = this.mapCoord
@@ -189,7 +191,7 @@ export default {
     },
     // 设置
     setClick () {
-      this.$router.push({ path: '/sethot' })
+      this.$router.replace({ path: '/sethot' })
     },
     // 返回
     returnClick () {

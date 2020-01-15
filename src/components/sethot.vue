@@ -331,7 +331,7 @@ export default{
     },
     // 返回
     returnClick () {
-      this.$router.push({ path: '/roadmap' })
+      this.$router.replace({ path: '/roadmap' })
     },
     // 退出
     quitClick () {
